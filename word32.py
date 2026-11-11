@@ -8,12 +8,21 @@ def format_word(value):
     return f"0x{value:08X}"
 
 
+def pack_ascii(value):
+    """Pack four ASCII characters with the first character in the high byte."""
+    if len(value) != 4 or not value.isascii():
+        raise ValueError("exactly four ASCII characters are required")
+    return int.from_bytes(value.encode("ascii"), byteorder="big")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Format a 32-bit word.")
-    parser.add_argument("value", help="integer, for example 15 or 0x0F")
+    parser.add_argument("value", help="integer or four ASCII characters")
+    parser.add_argument("--ascii", action="store_true", help="pack ASCII characters")
     args = parser.parse_args()
     try:
-        print(format_word(int(args.value, 0)))
+        value = pack_ascii(args.value) if args.ascii else int(args.value, 0)
+        print(format_word(value))
     except ValueError as error:
         parser.error(str(error))
 
