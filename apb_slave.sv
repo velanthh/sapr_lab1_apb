@@ -15,24 +15,36 @@ module apb_slave #(
     output wire  [31:0] prdata
 );
     logic in_access;
-    logic [31:0] register_with_some_name;
-    wire address_valid;
+    logic [31:0] registers [0:3];
+    logic [1:0] register_index;
+    logic address_valid;
 
-    assign address_valid = (paddr == BASE_ADDR);
+    always_comb begin
+        address_valid = 1'b1;
+        register_index = 2'd0;
+        case (paddr - BASE_ADDR)
+            32'h00: register_index = 2'd0;
+            32'h04: register_index = 2'd1;
+            32'h08: register_index = 2'd2;
+            32'h0C: register_index = 2'd3;
+            default: address_valid = 1'b0;
+        endcase
+    end
     assign pready = presetn && in_access && psel && penable;
     assign pslverr = pready && !address_valid;
     assign prdata = (pready && !pwrite && address_valid)
-                    ? register_with_some_name : 32'b0;
+                    ? registers[register_index] : 32'b0;
 
     always_ff @(posedge pclk) begin
         if (!presetn) begin
             in_access <= 1'b0;
-            register_with_some_name <= '0;
+            for (int index = 0; index < 4; index++)
+                registers[index] <= '0;
         end else begin
             // Sample SETUP, then complete ACCESS on the next rising edge.
             in_access <= psel && !penable;
             if (pready && pwrite && address_valid)
-                register_with_some_name <= pwdata[0] ? 32'h5555_5555 : 32'hAAAA_AAAA;
+                registers[register_index] <= pwdata;
         end
     end
 
