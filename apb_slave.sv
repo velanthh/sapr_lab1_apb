@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 module apb_slave #(
-    parameter logic [31:0] BASE_ADDR = 32'h7000_0000
+    parameter [31:0] BASE_ADDR = 32'h7000_0000
 ) (
     input  logic        pclk,
     input  logic        presetn,
@@ -14,12 +14,11 @@ module apb_slave #(
     output wire         pslverr,
     output wire  [31:0] prdata
 );
-    logic in_access;
-    logic [31:0] registers [0:3];
-    logic [1:0] register_index;
-    logic address_valid;
+    reg [31:0] registers [0:3];
+    reg [1:0] register_index;
+    reg address_valid;
 
-    always_comb begin
+    always @(*) begin
         address_valid = 1'b1;
         register_index = 2'd0;
         case (paddr - BASE_ADDR)
@@ -30,19 +29,17 @@ module apb_slave #(
             default: address_valid = 1'b0;
         endcase
     end
-    assign pready = presetn && in_access && psel && penable;
+    assign pready = presetn && psel && penable;
     assign pslverr = pready && !address_valid;
     assign prdata = (pready && !pwrite && address_valid)
                     ? registers[register_index] : 32'b0;
 
-    always_ff @(posedge pclk) begin
+    integer index;
+    always @(posedge pclk) begin
         if (!presetn) begin
-            in_access <= 1'b0;
-            for (int index = 0; index < 4; index++)
+            for (index = 0; index < 4; index = index + 1)
                 registers[index] <= '0;
         end else begin
-            // Sample SETUP, then complete ACCESS on the next rising edge.
-            in_access <= psel && !penable;
             if (pready && pwrite && address_valid)
                 registers[register_index] <= pwdata;
         end
